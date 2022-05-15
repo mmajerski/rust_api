@@ -78,9 +78,9 @@ jobs:
         run: |
           sudo apt-get install libpq-dev -y
           SKIP_DOCKER=true ./scripts/init_db.sh
-      - name: Prepare sqlx
+      - name: Clean cargo before sqlx
         run: |
-          cargo sqlx prepare -- --bin rust_api
+          cargo clean
       - name: Check sqlx-data.json is up-to-date
         run: |
           cargo sqlx prepare --check -- --bin rust_api
