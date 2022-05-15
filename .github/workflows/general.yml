@@ -102,6 +102,7 @@ jobs:
           args: --all -- --check
 
   clippy:
+    permissions: write-all
     name: Clippy
     runs-on: ubuntu-latest
     services:
