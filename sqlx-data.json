@@ -15,7 +15,7 @@
     },
     "query": "\n    INSERT INTO subscriptions (id, email, name, subscribed_at, status)\n    VALUES ($1, $2, $3, $4, 'pending_confirmation')\n            "
   },
-  "8331e19e367a63b0c2112d1d8c048dd1a5f0eaa49d265d407a6ffd9469f127ce": {
+  "753c8ecfac0ea7d052e60cb582e3b3ebac5e50eb133152712ca18ab5d5e202f3": {
     "describe": {
       "columns": [],
       "nullable": [],
@@ -26,7 +26,7 @@
         ]
       }
     },
-    "query": "INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"
+    "query": "\n    INSERT INTO subscription_tokens (subscription_token, subscriber_id)\n    VALUES ($1, $2)\n        "
   },
   "a71a1932b894572106460ca2e34a63dc0cb8c1ba7a70547add1cddbb68133c2b": {
     "describe": {
