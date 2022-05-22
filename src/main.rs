@@ -1,8 +1,5 @@
-use sqlx::PgPool;
-use std::net::TcpListener;
-
 use rust_api::configuration::get_configuration;
-use rust_api::startup::run;
+use rust_api::startup::Application;
 use rust_api::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
@@ -11,13 +8,9 @@ async fn main() -> std::io::Result<()> {
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration");
-    let connection_pool = PgPool::connect_lazy_with(configuration.database.with_db());
 
-    let address = format!(
-        "{}:{}",
-        configuration.application.host, configuration.application.port
-    );
+    let application = Application::build(configuration).await?;
+    application.run_until_stopped().await?;
 
-    let listener = TcpListener::bind(address)?;
-    run(listener, connection_pool)?.await
+    Ok(())
 }
