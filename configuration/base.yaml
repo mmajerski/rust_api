@@ -1,6 +1,7 @@
 application:
   port: 8000
   host: 0.0.0.0
+  hmac_secret: "hmac-secrets-are-usually-really-long-strings-length-here-is-really-important-at-least-64-bytes"
 database:
   host: "127.0.0.1"
   port: 5432
@@ -13,3 +14,4 @@ email_client:
   sender_email: "test@gmail.com"
   authorization_token: "my-secret-token"
   timeout_milliseconds: 10000
+redis_uri: "redis://127.0.0.1:6379"
