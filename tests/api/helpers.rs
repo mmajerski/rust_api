@@ -1,14 +1,16 @@
 use argon2::password_hash::SaltString;
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use once_cell::sync::Lazy;
-use rust_api::configuration::{get_configuration, DatabaseSettings};
-use rust_api::telemetry::{get_subscriber, init_subscriber};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use tokio::runtime::Runtime;
 use uuid::Uuid;
 use wiremock::MockServer;
 
+use rust_api::configuration::{get_configuration, DatabaseSettings};
+use rust_api::email_client::EmailClient;
+use rust_api::issue_delivery_worker::{try_execute_task, ExecutionOutcome};
 use rust_api::startup::{get_connection_pool, Application};
+use rust_api::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();
@@ -83,6 +85,7 @@ pub struct TestApp {
     pub test_user: TestUser,
     pub api_client: reqwest::Client,
     pub db_name: String,
+    pub email_client: EmailClient,
 }
 
 impl TestApp {
@@ -231,6 +234,18 @@ impl TestApp {
         let plain_text = get_link(body["TextBody"].as_str().unwrap());
         ConfirmationLinks { html, plain_text }
     }
+
+    pub async fn dispatch_all_pending_emails(&self) {
+        loop {
+            if let ExecutionOutcome::EmptyQueue =
+                try_execute_task(&self.db_pool, &self.email_client)
+                    .await
+                    .unwrap()
+            {
+                break;
+            }
+        }
+    }
 }
 
 // Test tear down happens on drop, which will happen even if a test fails/panics mid-way.
@@ -306,6 +321,7 @@ pub async fn spawn_app() -> TestApp {
         test_user: TestUser::generate(),
         api_client: client,
         db_name: configuration.database.database_name,
+        email_client: configuration.email_client.client(),
     };
     test_app.test_user.store(&test_app.db_pool).await;
     test_app
