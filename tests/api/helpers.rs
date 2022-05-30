@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use rust_api::configuration::{get_configuration, DatabaseSettings};
 use rust_api::telemetry::{get_subscriber, init_subscriber};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use tokio::runtime::Runtime;
 use uuid::Uuid;
 use wiremock::MockServer;
 
@@ -81,6 +82,7 @@ pub struct TestApp {
     pub port: u16,
     pub test_user: TestUser,
     pub api_client: reqwest::Client,
+    pub db_name: String,
 }
 
 impl TestApp {
@@ -231,6 +233,44 @@ impl TestApp {
     }
 }
 
+// Test tear down happens on drop, which will happen even if a test fails/panics mid-way.
+impl Drop for TestApp {
+    fn drop(&mut self) {
+        // This is a hacky workaround to calling async code from this sync Drop trait to clean up.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let db_name = self.db_name.clone();
+
+        std::thread::spawn(move || {
+            let rt = Runtime::new().unwrap();
+            rt.block_on(async {
+                let config = get_configuration().expect("Failed to read configuration");
+                let mut conn = PgConnection::connect_with(&config.database.without_db())
+                    .await
+                    .expect("Failed to connect to Postgres");
+
+                // Kick off open sessions (from the spawned app). This could be replaced
+                // by WITH (FORCE) in Postgres 13+.
+                conn.execute(&*format!(
+                    "SELECT pg_terminate_backend(pg_stat_activity.pid)
+                    FROM pg_stat_activity
+                    WHERE datname = '{}'
+                      AND pid <> pg_backend_pid();",
+                    db_name
+                ))
+                .await
+                .expect("Failed to disconnect other sessions");
+
+                conn.execute(&*format!("DROP DATABASE \"{}\";", db_name))
+                    .await
+                    .expect(&format!("Failed to drop temporary database: {}", db_name));
+                let _ = tx.send(());
+            })
+        });
+
+        let _ = rx.recv();
+    }
+}
+
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
@@ -265,6 +305,7 @@ pub async fn spawn_app() -> TestApp {
         port: application_port,
         test_user: TestUser::generate(),
         api_client: client,
+        db_name: configuration.database.database_name,
     };
     test_app.test_user.store(&test_app.db_pool).await;
     test_app
