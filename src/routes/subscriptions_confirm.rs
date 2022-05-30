@@ -34,7 +34,7 @@ pub async fn confirm(parameters: web::Query<Parameters>, pool: web::Data<PgPool>
 )]
 pub async fn confirm_subscriber(pool: &PgPool, subscriber_id: Uuid) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        r#"UPDATE subscriptions SET status = 'confirmed' WHERE id = $1"#,
+        "UPDATE subscriptions SET status = 'confirmed' WHERE id = $1",
         subscriber_id
     )
     .execute(pool)
@@ -53,7 +53,7 @@ pub async fn get_subscriber_id_from_token(
     subscription_token: &str,
 ) -> Result<Option<Uuid>, sqlx::Error> {
     let result = sqlx::query!(
-        r#"SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1"#,
+        "SELECT subscriber_id FROM subscription_tokens WHERE subscription_token = $1",
         subscription_token
     )
     .fetch_optional(pool)
