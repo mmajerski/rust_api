@@ -80,6 +80,5 @@ async fn get_confirmed_subscribers(
         Err(error) => Err(anyhow::anyhow!(error)),
     })
     .collect();
-    
     Ok(confirmed_subscribers)
 }
